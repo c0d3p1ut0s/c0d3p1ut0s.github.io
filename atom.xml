@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>c0d3p1ut0s</title>
+  
+  <subtitle>程序员 安全</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://c0d3p1ut0s.github.io/"/>
+  <updated>2017-11-27T15:51:03.000Z</updated>
+  <id>http://c0d3p1ut0s.github.io/</id>
+  
+  <author>
+    <name>c0d3p1ut0s</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>About</title>
+    <link href="http://c0d3p1ut0s.github.io/About/"/>
+    <id>http://c0d3p1ut0s.github.io/About/</id>
+    <published>2017-11-27T15:35:47.000Z</published>
+    <updated>2017-11-27T15:51:03.000Z</updated>
+    
+    <content type="html"><![CDATA[<h4 id="关于本人"><a href="#关于本人" class="headerlink" title="关于本人"></a>关于本人</h4><ul><li>开发者 做一些安全</li></ul><h4 id="一些微小的工作"><a href="#一些微小的工作" class="headerlink" title="一些微小的工作"></a>一些微小的工作</h4><ul><li>一类PHP RASP实现 <a href="https://paper.seebug.org/449/" target="_blank" rel="noopener">https://paper.seebug.org/449/</a></li></ul><h4 id="联系方式"><a href="#联系方式" class="headerlink" title="联系方式"></a>联系方式</h4><ul><li>Email: <code>YzBkM3AxdXQwc0BnbWFpbC5jb20=</code></li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h4 id=&quot;关于本人&quot;&gt;&lt;a href=&quot;#关于本人&quot; class=&quot;headerlink&quot; title=&quot;关于本人&quot;&gt;&lt;/a&gt;关于本人&lt;/h4&gt;&lt;ul&gt;
+&lt;li&gt;开发者 做一些安全&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id=&quot;一些微小的工作&quot;&gt;&lt;a href=&quot;#一些微小的工作&quot;
+      
+    
+    </summary>
+    
+    
+      <category term="aboutme" scheme="http://c0d3p1ut0s.github.io/tags/aboutme/"/>
+    
+  </entry>
+  
+</feed>
