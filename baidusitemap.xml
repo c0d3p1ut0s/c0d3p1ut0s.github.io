@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+
+    
+  <url>
+    <loc>http://c0d3p1ut0s.github.io/about/</loc>
+    <lastmod>2017-11-27T14:35:43.000Z</lastmod>
+    <data>
+        <display>
+        <title>about</title>
+        <pubTime>2017-11-27T14:35:30.000Z</pubTime>
+        
+         
+           
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
+    <loc>http://c0d3p1ut0s.github.io/myfirstarticle/</loc>
+    <lastmod>2017-11-27T14:35:03.000Z</lastmod>
+    <data>
+        <display>
+        <title>myfirstarticle</title>
+        <pubTime>2017-11-27T14:35:03.000Z</pubTime>
+        
+         
+           
+        </display>
+    </data>
+    </url>
+
+    
+    
+    
+  <url>
+    <loc>http://c0d3p1ut0s.github.io/hello-world/</loc>
+    <lastmod>2017-11-27T12:15:57.000Z</lastmod>
+    <data>
+        <display>
+        <title>Hello World</title>
+        <pubTime>2017-11-27T12:15:57.000Z</pubTime>
+        
+         
+           
+        </display>
+    </data>
+    </url>
+
+</urlset>
