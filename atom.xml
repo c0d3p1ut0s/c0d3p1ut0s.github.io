@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://c0d3p1ut0s.github.io/"/>
-  <updated>2017-11-30T15:21:48.000Z</updated>
+  <updated>2017-12-14T14:59:46.000Z</updated>
   <id>http://c0d3p1ut0s.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>BurpUnlimited分析</title>
+    <link href="http://c0d3p1ut0s.github.io/BurpUnlimited%E5%88%86%E6%9E%90/"/>
+    <id>http://c0d3p1ut0s.github.io/BurpUnlimited分析/</id>
+    <published>2017-12-14T14:56:46.000Z</published>
+    <updated>2017-12-14T14:59:46.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="0x00-前言"><a href="#0x00-前言" class="headerlink" title="0x00 前言"></a>0x00 前言</h2><p>最近，larry破解的BurpSuite Pro过期了，不久，mxcx放出了一个BurpSuite Pro的无限版，由BurpUnlimited启动，并且开源了BurpUnlimited的源代码，可供分析。</p><p>BurpUnlimited可以分为两部分，一是有main函数的<code>larry.lau.BurpLoader</code>及依赖模块，另一部分是有premain函数的<code>mxcx.javaagent</code>及依赖模块，premain函数是Java Instrumentation的入口函数。将BurpUnlimited分为这两部分是显而易见的，因为在BurpUnlimited的readme中，开发者说一种运行BurpUnlimited的方法是<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -javaagent:BurpUnlimited.jar -agentpath:lib/libfaketime&lt;osverion&gt; -jar BurpUnlimited.jar</span><br></pre></td></tr></table></figure></p><p>显然，BurpUnlimited能直接运行，说明它有main函数，能作为javaagent加载，说明它又是一个有premain函数的Instrumentation。<br>在分析这两部分之前，先说一些背景。</p><h2 id="0x01-背景"><a href="#0x01-背景" class="headerlink" title="0x01 背景"></a>0x01 背景</h2><p>Java Instrumentation允许开发者访问从JVM中加载的类，并且允许对它的字节码做修改，加入我们自己的代码，这些都是在运行时完成的。并且它仍然遵从安全管理器的限制。Java Instrumentation通过-javaagent加载。</p><p>在调试Java Instrumentation时，建议使用远程调试，远程调试的命令行参数如下：<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005</span><br></pre></td></tr></table></figure></p><p>在这里，建议将suspend参数设置为y，这样可以保证调试者连接上来之后才开始启动应用，否则在调试代码运行和调试器连接上来之间有时间差，不好控制代码的运行。</p><h2 id="0x02-分析"><a href="#0x02-分析" class="headerlink" title="0x02 分析"></a>0x02 分析</h2><p>在这里仅分析一下BurpUnlimited对larry的BurpLoader的破解。在larry.lau.BurpLoader中，绝大多数代码是larrylau对BurpSuite Pro的破解，mxcx主要添加了<code>BurpUnlimited.setupValidationEnv();</code>和<code>BurpUnlimited.uninstallFakeTime();</code>这两行代码<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] array)</span> </span>&#123; </span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           BurpUnlimited.setupValidationEnv();</span><br><span class="line">           <span class="keyword">final</span> String s = BurpLoader.z[<span class="number">3</span>];</span><br><span class="line">           <span class="comment">//......</span></span><br><span class="line">           StartBurp.main(array);</span><br><span class="line">           BurpUnlimited.uninstallFakeTime();</span><br><span class="line">       &#125;<span class="keyword">catch</span>(<span class="comment">/*...*/</span>)&#123;</span><br><span class="line">           <span class="comment">//.....</span></span><br><span class="line">       &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p><p>我们先来看看<code>BurpUnlimited.setupValidationEnv();</code>，<code>BurpUnlimited.setupValidationEnv()</code>方法主要做了这么几件事</p><ul><li><p>获取参数，判断是否添加了-javaagent和-agentlib等参数，如果没有添加，说明BurpUnlimited是以双击的方式直接启动的，那么程序构造一个shell命令</p><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -javaagent:BurpUnlimited.jar -agentpath:lib/libfaketime&lt;osverion&gt; -jar BurpUnlimited.jar</span><br></pre></td></tr></table></figure><p>运行这个有完整参数的命令重新启动。</p></li><li>利用反射，将JVM的Managed Bean对象里面的jvm成员里面的vmArgs置为[]以绕过BurpSuite中的反调试。</li><li>将系统参数faketime.absolute.ms设置为1420045200000，即<code>Thu Jan 01 01:00:00 CST 2015</code>。</li></ul><p>下面分析一下这个类中几行关键的代码。line118 <code>RuntimeMXBean mxb = ManagementFactory.getRuntimeMXBean();</code>获取当前运行的jvm的managed bean。line120-line152，判断jvm的参数中是否有-javaagent和-agentpath，如果没有，补充完整，运行完整shell命令。line154，<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">StrictPA.setValue(StrictPA.getValue(mxb, <span class="string">"jvm"</span>), <span class="string">"vmArgs"</span>, Collections.unmodifiableList(<span class="keyword">new</span> ArrayList&lt;Object&gt;()));</span><br></pre></td></tr></table></figure></p><p>通过反射，将managed bean中的jvm中的vmArg重置为[]，重置之前是jvm的参数是<code>[&#39;-javaagent:BurpUnlimited.jar&#39;,&#39; -agentpath:lib/libfaketime&lt;osverion&gt;&#39;]</code>。重置后可以绕过BurpSuite的反调试。实际上，<br>在安全管理器没做限定的情况下，反射可以使用<code>setAccessible(true)</code>去除类似于private的访问限制，并且随心所欲的修改受访问限制的变量。而在默认情况下，安全管理器是不启用的。line160-line166，将<code>faketime.absolute.ms</code>设置为2015年，并判断是否成功修改<code>System.currentTimeMillis()</code>的实现。这里使用了faketime项目<a href="https://github.com/faketime-java/faketime。" target="_blank" rel="noopener">https://github.com/faketime-java/faketime。</a></p><p><code>BurpUnlimited.setupValidationEnv();</code>之后就是larrylau的破解，破解完毕之后，调用<code>StartBurp.main(array);</code>启动Burp，之后就调用<code>BurpUnlimited.uninstallFakeTime();</code>将时间改回了真实的时间。代码如下<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">StartBurp.main(array);</span><br><span class="line">BurpUnlimited.uninstallFakeTime();</span><br></pre></td></tr></table></figure></p><p>可见BurpSuite仅在启动时对License进行了判断。</p><p>下面是分析一下Java Instrumentation，首先，java instrumentation有一个premain函数作为入口，类似于main函数，在这个函数中，可以为Instrumentation添加一个<code>transformer</code>对字节码进行操作。在transformer类中，必须实现<code>transform</code>方法来对字节码进行修改。有时为了安全或者保密，会对字节码加密，必须依赖特定的解密instrumentation才可以被jvm加载。字节码的解密就可以在<code>transform</code>方法中。这个Instrumentation将<code>larry/lau/burp/ui/TestDisclaimer</code>和<code>burp/uzd</code>的字节码直接修改成了<code>TestDisclaimerClass</code>和<code>uzdClass</code><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">String TestDisclaimerClass = &quot;cafebabe0000003300250a0....20019&quot;;</span><br><span class="line">String uzdClass = &quot;cafebabe00000033006f0a0....2003f&quot;;</span><br></pre></td></tr></table></figure></p><p>这两个字符串对应的字节码是<code>BurpUnlimited/others/aloneclasses/burp/uzd.java</code>和<code>BurpUnlimited/others/aloneclasses/larry/lau/burp/ui/TestDisclaimer.java</code>的字节码，它替换了原来的larrylau声明<br><img src="https://i.loli.net/2017/12/14/5a3291bb8b687.png" alt="20171206_1.png"></p><p>和BurpSuite中的License界面</p><p><img src="https://i.loli.net/2017/12/14/5a3291bb96473.png" alt="20171206_2.png"></p><h2 id="0x03-总结"><a href="#0x03-总结" class="headerlink" title="0x03 总结"></a>0x03 总结</h2><p>mxcx使用一个java原生agent修改Java API获取的时间，使License在校验时获取的本地时间永远在License过期时间之前，这样，这个License将永远有效，不会过期。</p><h2 id="0x04-关于作者"><a href="#0x04-关于作者" class="headerlink" title="0x04 关于作者"></a>0x04 关于作者</h2><ul><li>c0d3p1ut0s <code>c0d3p1ut0s@gmail.com</code></li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;0x00-前言&quot;&gt;&lt;a href=&quot;#0x00-前言&quot; class=&quot;headerlink&quot; title=&quot;0x00 前言&quot;&gt;&lt;/a&gt;0x00 前言&lt;/h2&gt;&lt;p&gt;最近，larry破解的BurpSuite Pro过期了，不久，mxcx放出了一个BurpSuite 
+      
+    
+    </summary>
+    
+    
+      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
+    
+      <category term="Java安全" scheme="http://c0d3p1ut0s.github.io/tags/Java%E5%AE%89%E5%85%A8/"/>
+    
+  </entry>
   
   <entry>
     <title>一类PHP RASP的实现</title>
@@ -36,9 +61,9 @@
     </summary>
     
     
-      <category term="RASP" scheme="http://c0d3p1ut0s.github.io/tags/RASP/"/>
-    
       <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
+    
+      <category term="RASP" scheme="http://c0d3p1ut0s.github.io/tags/RASP/"/>
     
       <category term="PHP" scheme="http://c0d3p1ut0s.github.io/tags/PHP/"/>
     
