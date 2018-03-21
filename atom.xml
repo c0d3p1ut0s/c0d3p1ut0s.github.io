@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://c0d3p1ut0s.github.io/"/>
-  <updated>2018-01-25T11:02:13.000Z</updated>
+  <updated>2018-03-21T11:10:04.000Z</updated>
   <id>http://c0d3p1ut0s.github.io/</id>
   
   <author>
@@ -15,6 +15,33 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>简单说说MySQL Prepared Statement</title>
+    <link href="http://c0d3p1ut0s.github.io/%E7%AE%80%E5%8D%95%E8%AF%B4%E8%AF%B4MySQL-Prepared-Statement/"/>
+    <id>http://c0d3p1ut0s.github.io/简单说说MySQL-Prepared-Statement/</id>
+    <published>2018-03-21T11:05:36.000Z</published>
+    <updated>2018-03-21T11:10:04.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="0x00-前言"><a href="#0x00-前言" class="headerlink" title="0x00 前言"></a>0x00 前言</h2><p>之前在写安全测试报告时，对于SQL注入的修复建议或者防御措施无非是两条：一是白名单限制，二是参数化查询。对于参数化查询的原理，停留于MySQL能先将SQL语句进行词法和语法解析，再将参数绑定执行的阶段。而我们在代码中用Prepared Statement语句实现参数化查询时，很可能事实并不是如此。</p><h2 id="0x01-问题"><a href="#0x01-问题" class="headerlink" title="0x01 问题"></a>0x01 问题</h2><p>网上关于预编译语句的文章有很多，但是，大部分都是基于片面的实验得到以偏概全的结论。争论最多的问题是一般情况下MySQL是否开启了服务端的预编译。网上众说纷纭，经过实验，我得出来的结论是MySQL是否开启服务端的预编译是由客户端连接时的参数useServerPrepStmts决定的，而在MySQL提供的Connector/J版本5.0.5（release 2007-03-02）之后，默认情况下，useServerPrepStmts=false。即如果没有显式设置成true，默认情况下，MySQL不启用服务端预编译。</p><p>那么我们在代码中使用预编译函数，例如Java中的prepareStatement，是否存在SQL注入的风险呢？</p><h2 id="0x02-实验"><a href="#0x02-实验" class="headerlink" title="0x02 实验"></a>0x02 实验</h2><p>实验之前先打开MySQL服务器的日志，在my.ini中加一行：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">log=&quot;D:/mysql.log&quot;</span><br></pre></td></tr></table></figure></p><p>为了方便查看与MySQL服务器的通信，实验中使用了wireshark，如果MySQL服务器在本地，wireshark可能抓不到包，可以用本地ip连接MySQL服务器，不使用127.0.0.1或者localhost。并以管理员身份运行cmd，运行以下命令添加路由<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">route add 本地ip mask 255.255.255.255 本地网关</span><br></pre></td></tr></table></figure></p><p>MySQL官网在Connector/J 5.0.5的变更中有如下内容</p><blockquote><p>Important change: Due to a number of issues with the use of server-side prepared statements, Connector/J 5.0.5 has disabled their use by default. The disabling of server-side prepared statements does not affect the operation of the connector in any way.</p><p>To enable server-side prepared statements, add the following configuration property to your connector string:</p><p>useServerPrepStmts=true</p><p>The default value of this property is false (that is, Connector/J does not use server-side prepared statements).</p></blockquote><p>大致意思是Connector/J 5.05及以后的版本中，默认情况下useServerPrepStmts的值是false，不使用服务端预编译。这里，我用的Connector/J版本是5.1.46。</p><p>首先，我们看一下useServerPrepStmts=true情况下wireshark的抓包和MySQL的日志。代码如下：<br><img src="https://i.loli.net/2018/03/21/5ab1fb5d38555.png" alt="201803211422.PNG"></p><p>运行代码，抓包如下：<br><img src="https://i.loli.net/2018/03/21/5ab1fb5d2f323.png" alt="201803211425.png"><br>上面这个包是发送给要求MySQL服务器Prepare语句”select * from user where id=?”<br><img src="https://i.loli.net/2018/03/21/5ab1fb5d2ddc8.png" alt="201803211426.png"><br>接下来发送填充到占位符的字符串的值，我们看到，在这里字符串没有被转义。<br><img src="https://i.loli.net/2018/03/21/5ab1fb5d36e47.png" alt="201803211427.png"><br>这是MySQL的日志，可以明显看到，MySQL prepare了语句select * from user WHERE id=?，接着执行了select * from user WHERE id=’1\‘ or \‘1\‘=\‘1’。</p><p>很明显，MySQL服务器对SQL语句做了预编译。</p><p>接着，去掉useServerPrepStmts=true，在普通情况下会发生什么呢？<br>代码如下：<br><img src="https://i.loli.net/2018/03/21/5ab1fe3048921.png" alt="201803211434.png"><br><img src="https://i.loli.net/2018/03/21/5ab1fe3047411.png" alt="201803211435.png"></p><p>抓包发现，java程序仅向MySQL服务器发送了一个Query请求，而且Query的SQL语句是select * from user WHERE id=’1\‘ or \‘1\‘=\‘1’。</p><p><img src="https://i.loli.net/2018/03/21/5ab1fe3049f76.png" alt="201803211437.png"><br>从MySQL日志中，我们发现也确实如此。这是为什么呢？</p><h2 id="0x03-客户端预编译"><a href="#0x03-客户端预编译" class="headerlink" title="0x03 客户端预编译"></a>0x03 客户端预编译</h2><p>我们跟一下<code>PreparedStatement statement = connection.prepareStatement(sql)</code>这一句，F7跟进，在com.mysql.jdbc.ConnectionImpl中存在以下逻辑：<br>2792行：<br><img src="https://i.loli.net/2018/03/21/5ab20549327d3.png" alt="201803211502.png"></p><p>判断了一下useServerPreparedStmts是否打开和canServerPrepare是否为true，均为true则走下面调用服务端预编译的逻辑。而默认情况下，useServerPreparedStmts=false，因此，代码到2837行：<br><img src="https://i.loli.net/2018/03/21/5ab2054882f15.png" alt="201803211503.png"><br>调用clientPrepareStatement来对SQL语句进行处理。这样的话，对单引号等关键字符的转义在哪里做的呢？</p><p>我们接着来跟一下<code>statement.setString(1, &quot;1&#39; or &#39;1&#39;=&#39;1&quot;);</code>这一句。在com.mysql.jdbc.PreparedStatement中，2238行开始<br><img src="https://i.loli.net/2018/03/21/5ab20a62051dc.png" alt="201803211520.png"><br>省略部分代码<br><img src="https://i.loli.net/2018/03/21/5ab20a62526a1.png" alt="201803211529.png"><br>从2282行开始，对填充的字符串做转义处理，并在转义之后的字符串前后填加单引号。这段代码的主要作用是转义字符串，防止SQL注入。</p><h2 id="0x04-试着突破它"><a href="#0x04-试着突破它" class="headerlink" title="0x04 试着突破它"></a>0x04 试着突破它</h2><p>这里转义的字符比较少，有没有漏掉一些字符，能够逃逸出单引号呢？我对SQL注入并不精通，凭空想出一些payload比较难，这里有两种方法可以试一下，一是参看类似的实现，例如php中addslashes的源代码，二是fuzz。</p><p>PHP的addslashes的源代码在ext/standard/string.c中。遗憾的是，并没有发现其他字符。</p><p>接下来是fuzz，Java中，字符的编码是utf16，Unicode的编码空间从U+0000到U+10FFFF，共有1,112,064个码位。进过fuzz测试，也没有发现能逃逸单引号的字符。</p><h2 id="0x05-其他语言的客户端prepare"><a href="#0x05-其他语言的客户端prepare" class="headerlink" title="0x05 其他语言的客户端prepare"></a>0x05 其他语言的客户端prepare</h2><p>MySQL官方提供了各种语言连接MySQL的Connectors，其他语言的connectors是不是也默认客户端prepare呢？我测试了Python的，结果也是同样。其余Connectors有兴趣的读者可以自行测试。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;0x00-前言&quot;&gt;&lt;a href=&quot;#0x00-前言&quot; class=&quot;headerlink&quot; title=&quot;0x00 前言&quot;&gt;&lt;/a&gt;0x00 前言&lt;/h2&gt;&lt;p&gt;之前在写安全测试报告时，对于SQL注入的修复建议或者防御措施无非是两条：一是白名单限制，二是参数化查
+      
+    
+    </summary>
+    
+    
+      <category term="Java安全" scheme="http://c0d3p1ut0s.github.io/tags/Java%E5%AE%89%E5%85%A8/"/>
+    
+      <category term="MySQL" scheme="http://c0d3p1ut0s.github.io/tags/MySQL/"/>
+    
+      <category term="SQL注入" scheme="http://c0d3p1ut0s.github.io/tags/SQL%E6%B3%A8%E5%85%A5/"/>
+    
+  </entry>
   
   <entry>
     <title>Java RASP浅析--以百度OpenRASP为例</title>
