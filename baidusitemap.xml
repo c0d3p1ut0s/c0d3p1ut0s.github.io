@@ -4,6 +4,27 @@
 
     
   <url>
+    <loc>http://c0d3p1ut0s.github.io/MyBatis%E6%A1%86%E6%9E%B6%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84SQL%E6%B3%A8%E5%85%A5/</loc>
+    <lastmod>2018-05-17T11:47:13.000Z</lastmod>
+    <data>
+        <display>
+        <title>MyBatis框架中常见的SQL注入</title>
+        <pubTime>2018-05-17T11:45:24.000Z</pubTime>
+        
+        <tag>MyBatis</tag>
+         
+        <tag>SQL注入</tag>
+         
+        <tag>Java安全</tag>
+         
+         
+           
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
     <loc>http://c0d3p1ut0s.github.io/%E7%AE%80%E5%8D%95%E8%AF%B4%E8%AF%B4MySQL-Prepared-Statement/</loc>
     <lastmod>2018-03-21T11:10:04.000Z</lastmod>
     <data>
@@ -11,11 +32,11 @@
         <title>简单说说MySQL Prepared Statement</title>
         <pubTime>2018-03-21T11:05:36.000Z</pubTime>
         
+        <tag>SQL注入</tag>
+         
         <tag>Java安全</tag>
          
         <tag>MySQL</tag>
-         
-        <tag>SQL注入</tag>
          
          
            
@@ -49,9 +70,9 @@
         <title>BurpUnlimited分析</title>
         <pubTime>2017-12-14T14:56:46.000Z</pubTime>
         
-        <tag>Web安全</tag>
-         
         <tag>Java安全</tag>
+         
+        <tag>Web安全</tag>
          
          
            
@@ -68,13 +89,13 @@
         <title>Java RASP浅析--以百度OpenRASP为例</title>
         <pubTime>2018-01-25T11:01:30.000Z</pubTime>
         
-        <tag>Web安全</tag>
-         
         <tag>Java安全</tag>
+         
+        <tag>Java</tag>
          
         <tag>RASP</tag>
          
-        <tag>Java</tag>
+        <tag>Web安全</tag>
          
          
            
@@ -91,9 +112,9 @@
         <title>一类PHP RASP的实现</title>
         <pubTime>2017-11-30T12:27:02.000Z</pubTime>
         
-        <tag>Web安全</tag>
-         
         <tag>RASP</tag>
+         
+        <tag>Web安全</tag>
          
         <tag>PHP</tag>
          

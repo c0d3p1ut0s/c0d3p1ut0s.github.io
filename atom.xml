@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://c0d3p1ut0s.github.io/"/>
-  <updated>2018-03-21T11:10:04.000Z</updated>
+  <updated>2018-05-17T11:47:13.000Z</updated>
   <id>http://c0d3p1ut0s.github.io/</id>
   
   <author>
@@ -15,6 +15,30 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>MyBatis框架中常见的SQL注入</title>
+    <link href="http://c0d3p1ut0s.github.io/MyBatis%E6%A1%86%E6%9E%B6%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84SQL%E6%B3%A8%E5%85%A5/"/>
+    <id>http://c0d3p1ut0s.github.io/MyBatis框架中常见的SQL注入/</id>
+    <published>2018-05-17T11:45:24.000Z</published>
+    <updated>2018-05-17T11:47:13.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="0x00-MyBatis概述-amp-背景"><a href="#0x00-MyBatis概述-amp-背景" class="headerlink" title="0x00 MyBatis概述&amp;背景"></a>0x00 MyBatis概述&amp;背景</h2><p>MyBatis 是支持定制化SQL、存储过程以及高级映射的优秀的持久层框架。由于它非常灵活，非常轻量级，受到广大开发者的欢迎，各个大厂也用得比较多。MyBatis框架介绍相关的内容不多说，这类文章网上很多，这里我着重介绍一下MyBatis下常见的SQL注入漏洞。</p><a id="more"></a><p>写到一半发现有些概念要在前面说清楚一下，不然容易晕。</p><ul><li>MySQL：指MySQL服务器。</li><li>MyBatis：指MyBatis框架。</li><li>JDBC：是Java用来规范数据库连接的接口。</li><li>MySQL Connector/J：MySQL提供的、符合JDBC的、用来供java程序连接MySQL数据库的jar包。俗称：MySQL数据库驱动。</li></ul><h2 id="0x01-MyBatis的SQL注入"><a href="#0x01-MyBatis的SQL注入" class="headerlink" title="0x01 MyBatis的SQL注入"></a>0x01 MyBatis的SQL注入</h2><p>MyBatis支持两种参数符号，一种是#，另一种是$。<br>使用参数符号#的句子：<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">select</span> <span class="attr">id</span>=<span class="string">"selectPerson"</span> <span class="attr">parameterType</span>=<span class="string">"int"</span> <span class="attr">resultType</span>=<span class="string">"hashmap"</span>&gt;</span></span><br><span class="line">  SELECT * FROM PERSON WHERE ID = #&#123;id&#125;</span><br><span class="line"><span class="tag">&lt;/<span class="name">select</span>&gt;</span></span><br></pre></td></tr></table></figure></p><p>MyBatis会创建一个预编译语句，生成的代码类似于<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Similar JDBC code, NOT MyBatis…</span></span><br><span class="line">String selectPerson = <span class="string">"SELECT * FROM PERSON WHERE ID=?"</span>;</span><br><span class="line">PreparedStatement ps = conn.prepareStatement(selectPerson);</span><br><span class="line">ps.setInt(<span class="number">1</span>,id);</span><br></pre></td></tr></table></figure></p><p>参数会在SQL语句中用占位符”?”来标识，然后使用prepareStatement来预编译这个SQL语句。</p><p>但是你以为这个SQL语句真的被MySQL数据库预编译了吗？naive！其实在默认情况下，MySQL Connector/J只不过是把selectPerson做了一下转义，前后加了双引号，拼接到SQL语句里面，然后再交给MySQL执行罢了，更多的细节可以看这里 <a href="https://c0d3p1ut0s.github.io/%E7%AE%80%E5%8D%95%E8%AF%B4%E8%AF%B4MySQL-Prepared-Statement/">https://c0d3p1ut0s.github.io/%E7%AE%80%E5%8D%95%E8%AF%B4%E8%AF%B4MySQL-Prepared-Statement/</a> </p><p>另一种使用参数符号$时，MyBatis直接用字符串拼接把参数和SQL语句拼接在一起，然后执行。众所周知，这种情况非常危险，极容易产生SQL注入漏洞。</p><p>在使用MyBatis框架时，有以下场景极易产生SQL注入。</p><ol><li><p>SQL语句中的一些部分，例如order by字段、表名等，是无法使用预编译语句的。这种场景极易产生SQL注入。推荐开发在Java层面做映射，设置一个字段/表名数组，仅允许用户传入索引值。这样保证传入的字段或者表名都在白名单里面。</p></li><li><p>like参数注入。使用如下SQL语句可防止SQL注入</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">like concat(&apos;%&apos;,#&#123;title&#125;, &apos;%&apos;)，</span><br></pre></td></tr></table></figure></li><li><p>in之后参数的SQL注入。使用如下SQL语句可防止SQL注入</p><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">id in</span><br><span class="line"><span class="tag">&lt;<span class="name">foreach</span> <span class="attr">collection</span>=<span class="string">"ids"</span> <span class="attr">item</span>=<span class="string">"item"</span> <span class="attr">open</span>=<span class="string">"("</span><span class="attr">separator</span>=<span class="string">","</span> <span class="attr">close</span>=<span class="string">")"</span>&gt;</span></span><br><span class="line">#&#123;item&#125; </span><br><span class="line"><span class="tag">&lt;/<span class="name">foreach</span>&gt;</span></span><br></pre></td></tr></table></figure></li></ol><h2 id="0x02-x-generator的SQL注入"><a href="#0x02-x-generator的SQL注入" class="headerlink" title="0x02 x-generator的SQL注入"></a>0x02 x-generator的SQL注入</h2><p>为了提高开发效率，一些generator工具被开发出来，generator是一个从数据库结构 自动生成实体类、Mapper接口以及对应的XML文件的工具。常见的generator有mybatis-generator，renren-generator等。</p><p>mybatis-generator是mybatis官方的一款generator。在mybatis-generator自动生成的SQL语句中，order by使用的是$，也就是简单的字符串拼接，这种情况下极易产生SQL注入。需要开发者特别注意。</p><p>不过，mybatis-generator产生的like语句和in语句全部都是用的参数符号#，都是非常安全的实现。</p>]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;0x00-MyBatis概述-amp-背景&quot;&gt;&lt;a href=&quot;#0x00-MyBatis概述-amp-背景&quot; class=&quot;headerlink&quot; title=&quot;0x00 MyBatis概述&amp;amp;背景&quot;&gt;&lt;/a&gt;0x00 MyBatis概述&amp;amp;背景&lt;/h2&gt;&lt;p&gt;MyBatis 是支持定制化SQL、存储过程以及高级映射的优秀的持久层框架。由于它非常灵活，非常轻量级，受到广大开发者的欢迎，各个大厂也用得比较多。MyBatis框架介绍相关的内容不多说，这类文章网上很多，这里我着重介绍一下MyBatis下常见的SQL注入漏洞。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="MyBatis" scheme="http://c0d3p1ut0s.github.io/tags/MyBatis/"/>
+    
+      <category term="SQL注入" scheme="http://c0d3p1ut0s.github.io/tags/SQL%E6%B3%A8%E5%85%A5/"/>
+    
+      <category term="Java安全" scheme="http://c0d3p1ut0s.github.io/tags/Java%E5%AE%89%E5%85%A8/"/>
+    
+  </entry>
   
   <entry>
     <title>简单说说MySQL Prepared Statement</title>
@@ -35,11 +59,11 @@
     </summary>
     
     
+      <category term="SQL注入" scheme="http://c0d3p1ut0s.github.io/tags/SQL%E6%B3%A8%E5%85%A5/"/>
+    
       <category term="Java安全" scheme="http://c0d3p1ut0s.github.io/tags/Java%E5%AE%89%E5%85%A8/"/>
     
       <category term="MySQL" scheme="http://c0d3p1ut0s.github.io/tags/MySQL/"/>
-    
-      <category term="SQL注入" scheme="http://c0d3p1ut0s.github.io/tags/SQL%E6%B3%A8%E5%85%A5/"/>
     
   </entry>
   
@@ -62,13 +86,13 @@
     </summary>
     
     
-      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
-    
       <category term="Java安全" scheme="http://c0d3p1ut0s.github.io/tags/Java%E5%AE%89%E5%85%A8/"/>
+    
+      <category term="Java" scheme="http://c0d3p1ut0s.github.io/tags/Java/"/>
     
       <category term="RASP" scheme="http://c0d3p1ut0s.github.io/tags/RASP/"/>
     
-      <category term="Java" scheme="http://c0d3p1ut0s.github.io/tags/Java/"/>
+      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
     
   </entry>
   
@@ -118,9 +142,9 @@
     </summary>
     
     
-      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
-    
       <category term="Java安全" scheme="http://c0d3p1ut0s.github.io/tags/Java%E5%AE%89%E5%85%A8/"/>
+    
+      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
     
   </entry>
   
@@ -144,9 +168,9 @@
     </summary>
     
     
-      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
-    
       <category term="RASP" scheme="http://c0d3p1ut0s.github.io/tags/RASP/"/>
+    
+      <category term="Web安全" scheme="http://c0d3p1ut0s.github.io/tags/Web%E5%AE%89%E5%85%A8/"/>
     
       <category term="PHP" scheme="http://c0d3p1ut0s.github.io/tags/PHP/"/>
     
